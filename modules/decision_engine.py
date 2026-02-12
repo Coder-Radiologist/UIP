@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 """
 ILD Karar Destek Motoru
-2025 ERS/ATS Kılavuzu Uyumlu Patern Tanıma ve Güven Skoru Hesaplama
+2025 ERS/ATS Güncellemesi Uyumlu Patern Tanıma ve Güven Skoru Hesaplama
+(Ryerson CJ et al. Eur Respir J 2025;66(6):2500158)
+
+2025 Nomenklatur: DIP→AMP, HP(patern)→BIP, AIP→DAD
+NSIP: Fibrotik/Nonfibrotik ayrımı
 """
 
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
-from config.pattern_definitions import PATTERN_CATEGORIES
+from config.pattern_definitions import PATTERN_CATEGORIES, NOMENCLATURE_2025_MAP
 
 
 @dataclass
@@ -75,10 +79,17 @@ class ILDDecisionEngine:
     ILD YÇBT patern analiz motoru.
     Seçilen BT bulgularını ve klinik bağlamı değerlendirerek
     en olası YÇBT paternini ve güven skorunu hesaplar.
+
+    2025 Nomenklatur uyumlu: DIP→AMP, HP→BIP, AIP→DAD
     """
 
     def __init__(self):
         self.patterns = PATTERN_CATEGORIES
+        self._legacy_map = NOMENCLATURE_2025_MAP
+
+    def resolve_pattern_key(self, key: str) -> str:
+        """Eski patern anahtarını 2025 nomenklaturuna çevir."""
+        return self._legacy_map.get(key, key)
 
     def analyze(
         self,
@@ -207,6 +218,8 @@ class ILDDecisionEngine:
             clinical_mod += modifiers["exposure_present"]
         if "subacute_presentation" in modifiers and "Subakut" in presentation:
             clinical_mod += modifiers["subacute_presentation"]
+        if "acute_presentation" in modifiers and "Akut" in presentation:
+            clinical_mod += modifiers["acute_presentation"]
 
         final_score = max(0, min(100, finding_score + clinical_mod))
 
