@@ -101,9 +101,16 @@ NON_FIBROTIC_FINDINGS = {
         "category": "non_fibrotic",
     },
     "centrilobular_nodules": {
-        "label": "Sentrilübüler nodüller",
-        "description": "Lobül merkezinde küçük nodüller. BIP (HP) ve RB-ILD düşündürür.",
+        "label": "Sentrilobüler nodüller (buzlu cam dansitede)",
+        "description": "Lobül merkezinde belirsiz sınırlı, buzlu cam dansitede nodüller. BIP (HP) ve RB-ILD düşündürür. Solid nodüller ve tree-in-bud eşlik ediyorsa enfeksiyon öncelikle düşünülmelidir.",
         "category": "non_fibrotic",
+        "subtype": "ground_glass",
+    },
+    "centrilobular_nodules_solid": {
+        "label": "Sentrilobüler nodüller (solid / tree-in-bud eşlikli)",
+        "description": "Lobül merkezinde solid, iyi sınırlı nodüller; tree-in-bud eşlik edebilir. Enfeksiyon, aspirasyon ve endobronşiyal yayılım düşündürür. HP/BIP ile uyumsuz kabul edilir.",
+        "category": "non_fibrotic",
+        "subtype": "solid",
     },
     "mosaic_attenuation": {
         "label": "Mozaik atenüasyon",
@@ -122,7 +129,7 @@ NON_FIBROTIC_FINDINGS = {
     },
     "tree_in_bud": {
         "label": "Tomurcuklanan ağaç (Tree-in-bud)",
-        "description": "Sentrilübüler dallanan lineer ve nodüler opasiteler. Enfeksiyon ve aspirasyon düşündürür.",
+        "description": "Sentrilobüler dallanan lineer ve nodüler opasiteler. Enfeksiyon ve aspirasyon düşündürür.",
         "category": "non_fibrotic",
     },
     "septal_thickening": {
@@ -213,8 +220,8 @@ ILA_FINDINGS = {
         "description": "Yağ dokusu ile ilişkili olmayan subplevral atelektazi.",
     },
     "ila_centrilobular_nodules": {
-        "label": "Sentrilübüler nodüller",
-        "description": "ILA kapsamında sentrilübüler nodüller.",
+        "label": "Sentrilobüler nodüller",
+        "description": "ILA kapsamında sentrilobüler nodüller.",
     },
 }
 
