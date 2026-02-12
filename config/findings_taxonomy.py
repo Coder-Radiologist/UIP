@@ -20,7 +20,7 @@ DISTRIBUTION_FINDINGS = {
     },
     "upper_predominant": {
         "label": "Üst lob predominant dağılım",
-        "description": "Üst lob ağırlıklı tutulum. HP, sarkoidoz ve PLCH'de tipiktir.",
+        "description": "Üst lob ağırlıklı tutulum. BIP (HP), sarkoidoz ve PLCH'de tipiktir.",
         "category": "distribution",
     },
     "peribronchovascular": {
@@ -30,7 +30,7 @@ DISTRIBUTION_FINDINGS = {
     },
     "diffuse": {
         "label": "Diffüz dağılım",
-        "description": "Homojen, yaygın tutulum. DIP, PAP ve diffüz hemoraji düşündürür.",
+        "description": "Homojen, yaygın tutulum. AMP (eski DIP), PAP ve diffüz hemoraji düşündürür.",
         "category": "distribution",
     },
     "random": {
@@ -102,7 +102,7 @@ NON_FIBROTIC_FINDINGS = {
     },
     "centrilobular_nodules": {
         "label": "Sentrilübüler nodüller",
-        "description": "Lobül merkezinde küçük nodüller. HP ve RB-ILD düşündürür.",
+        "description": "Lobül merkezinde küçük nodüller. BIP (HP) ve RB-ILD düşündürür.",
         "category": "non_fibrotic",
     },
     "mosaic_attenuation": {
@@ -112,7 +112,7 @@ NON_FIBROTIC_FINDINGS = {
     },
     "air_trapping": {
         "label": "Hava hapsi (Air trapping)",
-        "description": "Ekspiratuar kesitlerde lobüler düzeyde hava hapsi. HP ve obliteratif bronşiolit düşündürür.",
+        "description": "Ekspiratuar kesitlerde lobüler düzeyde hava hapsi. BIP (HP) ve obliteratif bronşiolit düşündürür.",
         "category": "non_fibrotic",
     },
     "crazy_paving": {
@@ -157,7 +157,7 @@ SPECIFIC_FINDINGS = {
         "category": "specific",
     },
     "perilobular_pattern": {
-        "label": "Perilübüler patern",
+        "label": "Perilobüler patern",
         "description": "Sekonder lobül periferinde arkuat opasiteler. OP için tipiktir.",
         "category": "specific",
     },
@@ -173,7 +173,7 @@ SPECIFIC_FINDINGS = {
     },
     "head_cheese_sign": {
         "label": "Head-cheese bulgusu",
-        "description": "GGO, normal akciğer ve lobüler air trapping bir arada. HP için tipiktir.",
+        "description": "GGO, normal akciğer ve lobüler air trapping bir arada. BIP (HP) için tipiktir.",
         "category": "specific",
     },
     "pleuroparenchymal_fibroelastosis": {
