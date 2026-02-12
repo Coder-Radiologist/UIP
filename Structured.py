@@ -1,4 +1,3 @@
-﻿
 import streamlit as st
 import sys
 import os
@@ -114,6 +113,8 @@ with st.sidebar:
     st.markdown("---")
     st.caption("v1.0 — 2025 ERS/ATS Uyumlu")
     st.caption("Ryerson CJ et al. Eur Respir J 2025")
+    st.markdown("")
+    st.caption("Doç. Dr. Mutlu Gülbay tarafından derlenmiştir.")
 
     # Yeni rapor butonu
     if st.button("🔄 Yeni Rapor Başlat", use_container_width=True):
@@ -550,4 +551,3 @@ st.markdown(
     f"<div class='footer-text'>{UI_TEXTS['footer']}</div>",
     unsafe_allow_html=True,
 )
-
