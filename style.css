@@ -1,0 +1,65 @@
+/* ILD Rapor Sistemi 2025 — Özel Stiller */
+
+/* Genel */
+.stApp {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Güven düzeyi renk kodları */
+.confidence-high {
+    background-color: #d4edda;
+    color: #155724;
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 5px solid #28a745;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0.5rem 0;
+}
+
+.confidence-medium {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 5px solid #ffc107;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0.5rem 0;
+}
+
+.confidence-low {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 5px solid #dc3545;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0.5rem 0;
+}
+
+/* Footer */
+.footer-text {
+    text-align: center;
+    color: #6c757d;
+    font-size: 0.85rem;
+    padding: 1rem 0;
+}
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background-color: #f8f9fa;
+}
+
+section[data-testid="stSidebar"] .stButton > button {
+    border-radius: 6px;
+    margin-bottom: 4px;
+}
+
+/* Rapor text area */
+.stTextArea textarea {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
