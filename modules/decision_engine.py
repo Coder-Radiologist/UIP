@@ -10,7 +10,12 @@ NSIP: Fibrotik/Nonfibrotik ayrımı
 
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
-from config.pattern_definitions import PATTERN_CATEGORIES, NOMENCLATURE_2025_MAP
+from config.pattern_definitions import (
+    PATTERN_CATEGORIES,
+    NOMENCLATURE_2025_MAP,
+    FINDING_IMPLICATIONS,
+    COOCCURRENCE_RULES,
+)
 
 
 @dataclass
@@ -91,6 +96,46 @@ class ILDDecisionEngine:
         """Eski patern anahtarını 2025 nomenklaturuna çevir."""
         return self._legacy_map.get(key, key)
 
+    @staticmethod
+    def _calculate_cooccurrence_modifiers(
+        expanded_findings: List[str],
+    ) -> Dict[str, float]:
+        """
+        Birlikte-görülme kurallarını değerlendir.
+
+        Belirli bulguların birlikteliği klinik anlam taşır.
+        Örn: sentrilobüler nodüller + tree-in-bud → enfeksiyon, BIP değil.
+
+        Returns:
+            Dict[pattern_key, toplam_modifier]
+        """
+        modifiers: Dict[str, float] = {}
+        findings_set = set(expanded_findings)
+
+        for rule in COOCCURRENCE_RULES:
+            trigger = set(rule["trigger_findings"])
+            if trigger.issubset(findings_set):
+                for pattern_key, mod_value in rule["pattern_modifiers"].items():
+                    modifiers[pattern_key] = modifiers.get(pattern_key, 0) + mod_value
+
+        return modifiers
+
+    @staticmethod
+    def _expand_findings(selected_findings: List[str]) -> List[str]:
+        """
+        Kompozit bulgulardan bileşenlerini otomatik çıkar.
+
+        Örnek: head_cheese_sign seçildiğinde centrilobular_nodules,
+        mosaic_attenuation ve air_trapping otomatik olarak eklenir.
+        Bu, klinik olarak doğrudur çünkü head-cheese bulgusu
+        bu üç bileşenin birlikte varlığını tanımlar.
+        """
+        expanded = set(selected_findings)
+        for finding in selected_findings:
+            if finding in FINDING_IMPLICATIONS:
+                expanded.update(FINDING_IMPLICATIONS[finding])
+        return list(expanded)
+
     def analyze(
         self,
         selected_findings: List[str],
@@ -115,12 +160,25 @@ class ILDDecisionEngine:
                 selected_findings=[],
             )
 
+        # Kompozit bulgulardan bileşenleri çıkar
+        # Örn: head_cheese_sign → centrilobular_nodules + mosaic + air_trapping
+        expanded_findings = self._expand_findings(selected_findings)
+
         results = []
         for pattern_key, pattern_def in self.patterns.items():
             result = self._score_pattern(
-                pattern_key, pattern_def, selected_findings, clinical_context
+                pattern_key, pattern_def, expanded_findings, clinical_context
             )
             results.append(result)
+
+        # Birlikte-görülme kurallarını uygula
+        # Örn: sentrilobüler nodül + tree-in-bud → BIP cezası
+        cooccurrence_mods = self._calculate_cooccurrence_modifiers(expanded_findings)
+        for result in results:
+            if result.pattern_key in cooccurrence_mods:
+                mod = cooccurrence_mods[result.pattern_key]
+                result.final_score = max(0, min(100, result.final_score + mod))
+                result.clinical_modifier_score += mod  # İzlenebilirlik
 
         # Skora göre sırala
         results.sort(key=lambda x: x.final_score, reverse=True)
@@ -145,41 +203,83 @@ class ILDDecisionEngine:
         selected_findings: List[str],
         clinical_context: Dict,
     ) -> PatternResult:
-        """Tek bir patern için skor hesapla."""
+        """
+        Tek bir patern için skor hesapla.
+
+        Tetikleme mantığı (2025 güncel):
+        1. required_findings kontrol edilir (orijinal yol)
+        2. Eğer required karşılanmazsa → alternative_required_sets kontrol edilir
+           Bu, elementer bulgulardan patern çıkarımı sağlar.
+           Örn: üst lob + GGO + air trapping → BIP çıkarımı
+        3. Alternatif set üzerinden tetiklenen paternlere %90 güven
+           katsayısı uygulanır (doğrudan bulgu yerine çıkarıma dayandığı için)
+        """
 
         required = pattern_def.get("required_findings", [])
+        alt_sets = pattern_def.get("alternative_required_sets", [])
         supportive = pattern_def.get("supportive_findings", [])
         against = pattern_def.get("against_findings", [])
         distribution = pattern_def.get("distribution", [])
         base_score = pattern_def.get("base_score", 50)
         modifiers = pattern_def.get("clinical_modifiers", {})
 
-        # --- Required findings ---
+        # --- Required findings: birincil veya alternatif yol ---
         matched_required = [f for f in required if f in selected_findings]
-        if not matched_required:
-            # Gerekli bulgu yoksa skor çok düşük
-            return PatternResult(
-                pattern_key=pattern_key,
-                pattern_name=pattern_def["name"],
-                base_score=base_score,
-                finding_score=0,
-                distribution_score=0,
-                clinical_modifier_score=0,
-                penalty_score=0,
-                final_score=0,
-                matched_required=[],
-                matched_supportive=[],
-                matched_against=[],
-                associated_diagnoses=pattern_def.get("associated_diagnoses", []),
-            )
+        used_alternative = False
+        inference_factor = 1.0  # Doğrudan bulgu = tam güven
 
-        # Required bulgu skoru: en az biri varsa baz skorun %60'ı
-        # Birden fazla required varsa ve hepsi seçildiyse tam baz skor
-        req_ratio = len(matched_required) / max(len(required), 1)
-        finding_score = base_score * (0.6 + 0.4 * req_ratio)
+        if not matched_required:
+            # Alternatif setleri kontrol et
+            best_alt_match = []
+            for alt_set in alt_sets:
+                alt_matched = [f for f in alt_set if f in selected_findings]
+                if len(alt_matched) == len(alt_set):
+                    # Tam eşleşme — en uzun seti tercih et (daha spesifik)
+                    if len(alt_matched) > len(best_alt_match):
+                        best_alt_match = alt_matched
+
+            if best_alt_match:
+                matched_required = best_alt_match
+                used_alternative = True
+                inference_factor = 0.90  # Çıkarıma dayalı → %90 güven
+            else:
+                # Ne birincil ne de alternatif tetiklendi
+                return PatternResult(
+                    pattern_key=pattern_key,
+                    pattern_name=pattern_def["name"],
+                    base_score=base_score,
+                    finding_score=0,
+                    distribution_score=0,
+                    clinical_modifier_score=0,
+                    penalty_score=0,
+                    final_score=0,
+                    matched_required=[],
+                    matched_supportive=[],
+                    matched_against=[],
+                    associated_diagnoses=pattern_def.get("associated_diagnoses", []),
+                )
+
+        # Required bulgu skoru
+        if used_alternative:
+            # Alternatif set: eşleşen eleman sayısına göre kademeli skor
+            req_ratio = len(matched_required) / max(len(matched_required), 1)
+            finding_score = base_score * (0.6 + 0.4 * req_ratio) * inference_factor
+        else:
+            req_ratio = len(matched_required) / max(len(required), 1)
+            finding_score = base_score * (0.6 + 0.4 * req_ratio)
 
         # --- Supportive findings ---
-        matched_supportive = [f for f in supportive if f in selected_findings]
+        # Alternatif setle tetiklendiyse, alternatif setteki bulgular
+        # supportive olarak tekrar sayılmaz (çift puan önleme)
+        if used_alternative:
+            already_counted = set(matched_required)
+            matched_supportive = [
+                f for f in supportive
+                if f in selected_findings and f not in already_counted
+            ]
+        else:
+            matched_supportive = [f for f in supportive if f in selected_findings]
+
         support_bonus = min(len(matched_supportive) * 3, 15)  # Max +15
         finding_score += support_bonus
 
@@ -247,7 +347,16 @@ class ILDDecisionEngine:
         if primary is None:
             return False, "Yeterli bulgu seçilmediği için değerlendirme yapılamadı."
 
-        # Kesin UIP ve yüksek güven → MDD gerekmez
+        # --- Karşıt bulgu kontrolü (tüm paternler için öncelikli) ---
+        if len(primary.matched_against) > 0:
+            return True, (
+                f"Primer paternle uyumsuz bulgu(lar) mevcuttur: "
+                f"{', '.join(primary.matched_against)}. "
+                "Atipik özellikler nedeniyle MDD önerilir."
+            )
+
+        # --- Kesin UIP ve yüksek güven → MDD gerekmez ---
+        # (Yalnızca karşıt bulgu yoksa buraya ulaşılır)
         if primary.pattern_key == "uip_definite" and primary.final_score >= 90:
             return False, (
                 "Kesin UIP paterni yüksek güvenle saptanmıştır. "
@@ -271,14 +380,6 @@ class ILDDecisionEngine:
             return True, (
                 f"Tanısal güven düzeyi orta-düşüktür (%{primary.final_score:.0f}). "
                 "Kesin tanı için MDD, serolojik tetkikler ve/veya biyopsi değerlendirilmelidir."
-            )
-
-        # Karşıt bulgu varsa → MDD önerilir
-        if len(primary.matched_against) > 0:
-            return True, (
-                f"Primer paternle uyumsuz bulgu(lar) mevcuttur: "
-                f"{', '.join(primary.matched_against)}. "
-                "Atipik özellikler nedeniyle MDD önerilir."
             )
 
         # Olası UIP → MDD hâlâ faydalı olabilir
