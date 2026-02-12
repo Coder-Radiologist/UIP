@@ -209,10 +209,26 @@ PATTERN_CATEGORIES = {
     # ---- BIP — Nonfibrotik (eski: Nonfibrotik HP) ----
     # 2025: HP yerine patern olarak BIP kullanılır
     # HP yalnızca multidisipliner tanı olarak kalır
+    #
+    # BIP tanısı iki yoldan tetiklenebilir:
+    #   1. Doğrudan: centrilobular_nodules veya head_cheese_sign seçimi
+    #   2. Elementer çıkarım: Üst lob + GGO + air trapping gibi
+    #      bireysel bulguların birlikteliği BIP'i düşündürür
+    #
+    # DİKKAT: tree_in_bud eşliği → enfeksiyon düşündürür, BIP'e karşı
     "bip_nonfibrotic": {
         "name": "Nonfibrotik BIP (eski: Nonfibrotik HP)",
         "category_2025": "İnterstisyel — Nonfibrotik",
         "required_findings": ["centrilobular_nodules"],
+        "alternative_required_sets": [
+            # Üç-dansite paterni (headcheese eşdeğeri, etiket bilinmeden)
+            # GGO + air trapping + mozaik = hava yolu merkezli hastalık
+            ["ground_glass", "air_trapping", "mosaic_attenuation"],
+            # Üst lob + GGO + hava hapsi → hava yolu tutulumu
+            ["ground_glass", "air_trapping", "upper_predominant"],
+            # Üst lob + GGO + mozaik → BIP düşündürür
+            ["ground_glass", "mosaic_attenuation", "upper_predominant"],
+        ],
         "supportive_findings": [
             "ground_glass",
             "mosaic_attenuation",
@@ -225,6 +241,8 @@ PATTERN_CATEGORIES = {
             "honeycombing",
             "traction_bronchiectasis",
             "peripheral_predominant",
+            "tree_in_bud",
+            "centrilobular_nodules_solid",
         ],
         "distribution": ["upper_predominant", "diffuse"],
         "base_score": 70,
@@ -241,10 +259,28 @@ PATTERN_CATEGORIES = {
     },
 
     # ---- BIP — Fibrotik (eski: Fibrotik HP) ----
+    #
+    # Fibrotik BIP tetikleme yolları:
+    #   1. Doğrudan: traksiyon + sentrilobüler nodüller
+    #   2. Elementer: Üst lob fibrozis (traksiyon/honeycombing/retikülasyon)
+    #      + hava yolu belirteci (air trapping/mozaik) → kronik fibrotik BIP
+    #      Bu, eski "kronik fibrotik HP" senaryolarını yakalar
     "bip_fibrotic": {
         "name": "Fibrotik BIP (eski: Fibrotik HP)",
         "category_2025": "İnterstisyel — Fibrotik",
         "required_findings": ["traction_bronchiectasis", "centrilobular_nodules"],
+        "alternative_required_sets": [
+            # Üst lob fibrozis + hava yolu → fibrotik BIP
+            # Senaryo: üst lob + retikülasyon + traksiyon + air trapping
+            ["traction_bronchiectasis", "upper_predominant", "air_trapping"],
+            ["traction_bronchiectasis", "upper_predominant", "mosaic_attenuation"],
+            # İleri fibrotik BIP (honeycombing ile)
+            ["honeycombing", "upper_predominant", "air_trapping"],
+            ["honeycombing", "upper_predominant", "mosaic_attenuation"],
+            # Retikülasyon + traksiyon + üst lob + hava yolu
+            ["reticulation", "traction_bronchiectasis", "upper_predominant", "air_trapping"],
+            ["reticulation", "traction_bronchiectasis", "upper_predominant", "mosaic_attenuation"],
+        ],
         "supportive_findings": [
             "ground_glass",
             "mosaic_attenuation",
@@ -252,9 +288,12 @@ PATTERN_CATEGORIES = {
             "reticulation",
             "head_cheese_sign",
             "upper_predominant",
+            "honeycombing",
         ],
         "against_findings": [
             "peripheral_predominant",
+            "tree_in_bud",
+            "centrilobular_nodules_solid",
         ],
         "distribution": ["upper_predominant", "diffuse", "random"],
         "base_score": 65,
@@ -503,6 +542,90 @@ DISPLAY_NAME_MAP = {
     "AIP": "DAD (Diffüz Alveoler Hasar)",
     "Akut İnterstisyel Pnömoni": "DAD (Diffüz Alveoler Hasar)",
 }
+
+# ====================================================
+# BULGU ÇIKARIM HARİTASI (Finding Implications)
+# ====================================================
+# Kompozit bulgular, bileşenlerini otomatik olarak içerir.
+# Bu sayede head-cheese seçildiğinde sentrilobüler nodüller
+# otomatik olarak değerlendirmeye dahil olur.
+FINDING_IMPLICATIONS = {
+    # Head-cheese sign = GGO + normal akciğer + lobüler air trapping + sentrilobüler komponent
+    "head_cheese_sign": [
+        "centrilobular_nodules",
+        "mosaic_attenuation",
+        "air_trapping",
+    ],
+    # Honeycombing ileri evre fibrozis — retiküler patern ve distorsiyon içerir
+    "honeycombing": [
+        "reticulation",
+        "architectural_distortion",
+    ],
+    # Crazy paving = GGO + süperpoze retiküler patern
+    "crazy_paving": [
+        "ground_glass",
+        "septal_thickening",
+    ],
+    # Reversed halo → konsolidasyon + GGO komponentleri
+    "reversed_halo": [
+        "consolidation",
+        "ground_glass",
+    ],
+}
+
+
+# ====================================================
+# BULGU BİRLİKTE-GÖRÜLME KURALLARI (Co-occurrence Rules)
+# ====================================================
+# Belirli bulguların birlikteliği, bazı paternlere ek ceza
+# veya bonus uygular. Bu, klinik bağlamı daha iyi yansıtır.
+#
+# Örnek: sentrilobüler nodüller + tree-in-bud = enfeksiyon
+# Bu durumda BIP büyük ceza almalı çünkü HP/BIP'te
+# tree-in-bud beklenmez; nodüller solid/enfektif karakter taşır.
+COOCCURRENCE_RULES = [
+    {
+        "name": "Enfektif sentrilobüler patern",
+        "trigger_findings": ["centrilobular_nodules", "tree_in_bud"],
+        "description": "Tree-in-bud eşlikli sentrilobüler nodüller enfeksiyonu "
+                        "düşündürür, HP/BIP ile uyumsuz.",
+        "pattern_modifiers": {
+            "bip_nonfibrotic": -20,
+            "bip_fibrotic": -20,
+        },
+    },
+    {
+        "name": "Solid nodül + enfeksiyon",
+        "trigger_findings": ["centrilobular_nodules_solid", "tree_in_bud"],
+        "description": "Solid sentrilobüler nodüller ve tree-in-bud: "
+                        "yüksek olasılıkla enfeksiyon.",
+        "pattern_modifiers": {
+            "bip_nonfibrotic": -25,
+            "bip_fibrotic": -25,
+        },
+    },
+    {
+        "name": "Solid nodül ↔ GGO nodül çatışması",
+        "trigger_findings": ["centrilobular_nodules", "centrilobular_nodules_solid"],
+        "description": "Hem buzlu cam hem solid sentrilobüler nodüller seçilmiş. "
+                        "Mikst patern: enfeksiyon + BIP süperpoze olabilir; MDD önerilir.",
+        "pattern_modifiers": {
+            "bip_nonfibrotic": -10,
+            "bip_fibrotic": -10,
+        },
+    },
+    {
+        "name": "Subplevral koruma + bazal GGO → NSIP güçlendirme",
+        "trigger_findings": ["subpleural_sparing", "ground_glass", "basal_predominant"],
+        "description": "Subplevral koruma ile bazal GGO birlikteliği "
+                        "NSIP'i güçlü şekilde destekler.",
+        "pattern_modifiers": {
+            "nsip_fibrotic": 10,
+            "nsip_nonfibrotic": 10,
+        },
+    },
+]
+
 
 # 2025 Sınıflama kategorileri
 CLASSIFICATION_2025 = {
